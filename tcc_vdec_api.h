@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
+typedef unsigned int uint32_t;
 
 #ifdef	__cplusplus
 extern "C"{
@@ -35,7 +36,7 @@ extern int tcc_vdec_open(void);
 extern int tcc_vdec_close(void);
 extern int tcc_vdec_process_annexb_header( unsigned char* data, int datalen);
 extern int tcc_vdec_process( unsigned char* data, int size);
-extern int tcc_vdec_SetViewFlag(int isValid);
+extern void tcc_vdec_SetViewFlag(int isValid);
 extern int tcc_vdec_init(int x, int y, int w, int h);
 
 #ifdef	__cplusplus
