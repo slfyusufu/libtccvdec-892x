@@ -26,10 +26,9 @@
 
 // Overlay Driver
 #define	OVERLAY_DRIVER	"/dev/overlay"
-#define DEC_VIDEO_FORMAT {(unsigned int)'N' | (unsigned int)'V'<<8 | (unsigned int)'1'<<16 | (unsigned int)'2'<<24}
+#define DEC_VIDEO_FORMAT ((unsigned int)'N' | (unsigned int)'V'<<8 | (unsigned int)'1'<<16 | (unsigned int)'2'<<24)
 #define TCC_LCDC_SET_WMIXER_OVP         0x0045
-#define OVERLAY_SET_CROP_INFO 0x1234
-#define OVERLAY_SET_SCALER_INFO 0x2345
+
 
 // FB Driver
 #define FB_DEV "/dev/fb0"
@@ -50,12 +49,12 @@ typedef struct _DecodeDate {
 } DecodeDate;
 
 static DecodeDate decode_data;
-#if 1
+#if 0
 //---------------------------------------------------------------
 static int g_OverlayDrv = -1;
 
 // Decoder State
-static int g_DecoderState = -1;
+//static int g_DecoderState = -1;
 
 
 // 描画可否フラグ
@@ -63,14 +62,13 @@ static int g_IsViewValid = 0;	// 0:不可, 1:可
 
 // SetConfigureを行ったかどうか
 static int g_IsSetConfigure = 0;	// 0:未設定, 1:設定済
-static unsigned int ignore = 1;
+//static unsigned int ignore = 1;
 // 一番最後にDecodeした画像情報
 static overlay_video_buffer_t g_lastinfo;
 
 // Mutex
 static pthread_mutex_t g_Mutex = PTHREAD_MUTEX_INITIALIZER;
 //----------------------------------------------------------------------
-#endif
 static void SetConfigure(void)
 {
 	overlay_config_t cfg;
@@ -85,6 +83,7 @@ static void SetConfigure(void)
 	decode_data.IsConfigured = 1;
 	
 }
+#endif
 
 void tcc_vdec_SetViewFlag(int isValid)
 {
@@ -97,7 +96,7 @@ void tcc_vdec_SetViewFlag(int isValid)
 	pthread_mutex_unlock(&(decode_data.mutex_lock));
 }
 
-int tcc_vdec_init(int sx, int sy, int width, int height)
+int tcc_vdec_init(unsigned int width, unsigned int height)
 {
 	//Init decode_data value
 	decode_data.OverlayDrv = -1;
@@ -105,8 +104,8 @@ int tcc_vdec_init(int sx, int sy, int width, int height)
 	decode_data.IsDecoderOpen = 0;
 	decode_data.IsConfigured = 0;
 	decode_data.default_ovp = 24;
-	decode_data.LCD_width = width;
-	decode_data.LCD_height = height;
+	decode_data.LCD_width = 800;//width;
+	decode_data.LCD_height = 480;//height;
 	
 	pthread_mutex_init(&(decode_data.mutex_lock),NULL);
 	
@@ -117,6 +116,7 @@ int tcc_vdec_open(void)
 {
 	pthread_mutex_lock(&(decode_data.mutex_lock));
 	memset( &(decode_data.lastinfo), 0, sizeof(overlay_video_buffer_t));
+	memset( &(decode_data.cur_info), 0, sizeof(overlay_video_buffer_t));
 	
 	//--------init and open vpu------------
 	if(decode_data.IsDecoderOpen) {
@@ -238,8 +238,7 @@ int tcc_vdec_process_annexb_header( unsigned char* data, int datalen)
 	}
 	
 	iret = tcc_vpudec_decode(inputdata, outputdata);
-	if(iret < 0)
-	{
+	if(iret < 0) {
 		ErrorPrint("Annexb Header Decode Error!\n");
 		pthread_mutex_unlock(&(decode_data.mutex_lock));
 		return -1;
@@ -262,7 +261,7 @@ int tcc_vdec_process( unsigned char* data, int size)
 	unsigned int outputdata[15] = {0};
 	unsigned int screen_width, screen_height;
 	overlay_video_buffer_t info;
-	unsigned int crop_info[4]={0};
+	//unsigned int crop_info[4]={0};
 	unsigned int scaler_info[2]={0};
 	
 	pthread_mutex_lock(&(decode_data.mutex_lock));
@@ -300,10 +299,124 @@ int tcc_vdec_process( unsigned char* data, int size)
 		return 0;
 	}
 	
+	decode_data.cur_info.cfg.width = outputdata[8];
+	decode_data.cur_info.cfg.height = outputdata[9];
+	decode_data.cur_info.cfg.format = DEC_VIDEO_FORMAT;
+	decode_data.cur_info.cfg.transform = 0;		
+	decode_data.cur_info.addr = outputdata[1];		// Y Address;
+
+#if !defined(CONFIG_CROP) && !defined(CONFIG_SCALER)
+	//Set position X
+	if(decode_data.cur_info.cfg.width <= screen_width)
+	{
+		decode_data.cur_info.cfg.sx =(screen_width-decode_data.cur_info.cfg.width)/2;
+	}
+	else
+	{
+		ErrorPrint("Image width is more then screen_width, need scaler!\n");
+		decode_data.cur_info.cfg.sx = 0;
+		decode_data.cur_info.cfg.width = screen_width;
+	}
+	//Set position Y
+	if(decode_data.cur_info.cfg.height <= screen_height)
+	{
+		decode_data.cur_info.cfg.sy =(screen_height-decode_data.cur_info.cfg.height)/2;
+	}
+	else
+	{
+		ErrorPrint("Image height is more then screen_hieght, need scaler!\n");
+		decode_data.cur_info.cfg.sy = 0;
+		decode_data.cur_info.cfg.height = screen_height;
+	}
+#endif
+
+#if defined(CONFIG_CROP)	
+	decode_data.cur_info.addr1 = outputdata[2];		// U Address;
+	decode_data.cur_info.addr2 = outputdata[3];		// V Address;
+	
+	//for crop
+	decode_data.cur_info.cfg.crop_src.left = 0;
+	decode_data.cur_info.cfg.crop_src.top = 0;
+	decode_data.cur_info.cfg.crop_src.width = outputdata[8]-outputdata[13];
+	decode_data.cur_info.cfg.crop_src.height = outputdata[9]-outputdata[14];
+	
+	//decode_data.cur_info.cfg.sx = (decode_data.LCD_width-info.cfg.crop_src.width)/2;
+	//decode_data.cur_info.cfg.sy = (decode_data.LCD_height-info.cfg.crop_src.height)/2;
+	
+	//Set position X
+	if(decode_data.cur_info.cfg.crop_src.width <= screen_width)
+	{
+		decode_data.cur_info.cfg.sx =(screen_width - decode_data.cur_info.cfg.crop_src.width)/2;
+	}
+	else
+	{
+		ErrorPrint("Image width is more then screen_width, need scaler!\n");
+		decode_data.cur_info.cfg.sx = 0;
+		decode_data.cur_info.cfg.crop_src.width = screen_width;
+	}
+	//Set position Y
+	if(decode_data.cur_info.cfg.crop_src.height <= screen_height)
+	{
+		decode_data.cur_info.cfg.sy =(screen_height - decode_data.cur_info.cfg.crop_src.height)/2;
+	}
+	else
+	{
+		ErrorPrint("Image height is more then screen_hieght, need scaler!\n");
+		decode_data.cur_info.cfg.sy = 0;
+		decode_data.cur_info.cfg.crop_src.height = screen_height;
+	}
+	DebugPrint("Pos [%d,%d], (%d,%d) -> (%d x %d)... \n", 	decode_data.cur_info.cfg.sx, 
+															decode_data.cur_info.cfg.sy, 
+															decode_data.cur_info.cfg.width, 
+															decode_data.cur_info.cfg.height, 
+															decode_data.cur_info.cfg.crop_src.width, 
+															decode_data.cur_info.cfg.crop_src.height);
+	//decode_data.cur_info.cfg.width = decode_data.cur_info.cfg.crop_src.width;
+	//decode_data.cur_info.cfg.height = decode_data.cur_info.cfg.crop_src.height;
+	
+	//ioctl( decode_data.OverlayDrv, OVERLAY_SET_CROP_INFO, &crop_info);
+#endif
+
+#if defined(CONFIG_SCALER)			
+	///for scaler
+	float ratio0 = (float)decode_data.cur_info.cfg.width/(float)decode_data.cur_info.cfg.height;
+	float ratio1 = (float)decode_data.cur_info.cfg.height/(float)decode_data.cur_info.cfg.width;
+	//printf("[Yusuf] ratio0=%.5f, ratio1=%.5f, target_ratio=%.5f...\n",ratio0, ratio1, TARGET_RATIO);
+	if((ratio0 >= TARGET_RATIO) || (ratio1 >= TARGET_RATIO)) //ratio is 16:9
+	{
+		if(decode_data.cur_info.cfg.width > decode_data.cur_info.cfg.height)
+		{
+			scaler_info[0] = TARGET_WIDTH;
+			//scaler_info[1] = (800*9)/16;
+			scaler_info[1] = (TARGET_WIDTH*(float)crop_info[3])/(float)crop_info[2];
+		}else{
+			//scaler_info[0] = (480*9)/16;
+			scaler_info[0] = (TARGET_HEIGHT*(float)crop_info[2])/(float)crop_info[3];
+			scaler_info[1] = TARGET_HEIGHT;
+		}
+	}else{//ratio is 4:3
+		if(decode_data.cur_info.cfg.width > decode_data.cur_info.cfg.height)
+		{
+			scaler_info[0] = (480*4)/3;//(unsigned int)(480.00 * (MAX(ratio0,ratio1))); //640;
+			scaler_info[1] = 480;
+		}else{
+			scaler_info[0] = (480*3)/4;//(unsigned int)(480.00 / (MAX(ratio0,ratio1))); //360;
+			scaler_info[1] = 480;
+		}
+	}
+	decode_data.cur_info.cfg.sx = (800-scaler_info[0])/2;
+	decode_data.cur_info.cfg.sy = (480-scaler_info[1])/2;
+	DebugPrint("Scaler: src (%d x %d) -- dst (%d x %d) \n", decode_data.cur_info.cfg.width, decode_data.cur_info.cfg.height, scaler_info[0], scaler_info[1]);
+	DebugPrint("(%d,%d) - (%d x %d)... \n",decode_data.cur_info.cfg.sx, decode_data.cur_info.cfg.sy, scaler_info[0], scaler_info[1]);
+
+	//ioctl( g_OverlayDrv, OVERLAY_SET_SCALER_INFO, &scaler_info);
+#endif
+
+//-------------------------------------------------------------------
+#if 0
 	if( iret >= 0 ){
 		
 		if( g_OverlayDrv >= 0 ){
-			
 
 			info.cfg.width = outputdata[8];
 			info.cfg.height = outputdata[9];
@@ -384,9 +497,21 @@ int tcc_vdec_process( unsigned char* data, int size)
 		ErrorPrint( "Decode fail\n" );
 		
 	}
+#endif
+	//----------------------------------------------------------------------
 	
-	pthread_mutex_unlock(&g_Mutex);
-	
+	//if( decode_data.IsConfigured == 0 ){
+	if(1) {
+		ioctl( decode_data.OverlayDrv, OVERLAY_SET_CONFIGURE, &decode_data.cur_info.cfg );
+		decode_data.IsConfigured = 1;
+	}
+	//////////////  Start to Push the video /////////////////////
+	ioctl( decode_data.OverlayDrv, OVERLAY_PUSH_VIDEO_BUFFER, &decode_data.cur_info );
+
+	memcpy( &(decode_data.lastinfo), &decode_data.cur_info, sizeof(overlay_video_buffer_t) );
+
+	pthread_mutex_unlock(&(decode_data.mutex_lock));
+
 	return 0;
 }
 

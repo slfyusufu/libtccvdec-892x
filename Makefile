@@ -13,8 +13,12 @@ LDFLAGS += -L$(PATH_ARM_NONE_LINUX_GNUEABI)/arm-none-linux-gnueabi/libc/lib
 OBJDIR = ./obj
 TARGETDIR = ./lib
 PLATFORM = tcc892x
+### For old sample
 SOURCE_PATH=/home/s100018/mywork/linux/tnn-1121/build/tnn-sample/tmp/work/cortexa5-vfp-neon-telechips-linux-gnueabi
 KERNEL_PATH=/home/s100018/mywork/linux/tnn-1121/build/tnn-sample/tmp/work-shared/tcc8925/kernel-source
+### For New Sample
+#SOURCE_PATH=/home/s100018/mywork/linux/tnn-1122/build/tnn-new-sample/tmp/work/cortexa5-vfp-neon-telechips-linux-gnueabi
+#KERNEL_PATH=/home/s100018/mywork/linux/tnn-1122/build/tnn-new-sample/tmp/work-shared/tcc8925/kernel-source
 SHAREDLIB_FLAGS := -shared -fPIC
 
 OBJECTS  = $(addprefix $(OBJDIR)/, $(SOURCES:.c=.o) )

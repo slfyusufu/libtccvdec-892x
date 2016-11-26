@@ -364,12 +364,12 @@ void print_user_data(unsigned char * pUserData)
 	unsigned char * pTmpPTR;
 	unsigned char * pRealData;
 	unsigned int nNumUserData;
-	unsigned int nTotalSize;
+	//unsigned int nTotalSize;
 	unsigned int nDataSize;
 
 	pTmpPTR = pUserData;
 	nNumUserData = (pTmpPTR[0] << 8) | pTmpPTR[1];
-	nTotalSize = (pTmpPTR[2] << 8) | pTmpPTR[3];
+	//nTotalSize = (pTmpPTR[2] << 8) | pTmpPTR[3];
 
 	pTmpPTR = pUserData + 8;
 	pRealData = pUserData + (8 * 17);
@@ -935,7 +935,7 @@ static int DECODER_DEC( tDEC_FRAME_INPUT *pInput, tDEC_FRAME_OUTPUT *pOutput, tD
 	int nLen = 0;
 	int decode_result;	
 	unsigned int input_offset = 0;	
-	unsigned char retry_input = 0;
+	//unsigned char retry_input = 0;
 	dec_disp_info_t dec_disp_info_tmp;
 	
 	memset(pOutput, 0x00, sizeof(tDEC_FRAME_OUTPUT));
@@ -1359,7 +1359,7 @@ static int DECODER_DEC( tDEC_FRAME_INPUT *pInput, tDEC_FRAME_OUTPUT *pOutput, tD
 #if 1
 	if(dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iDecodingStatus == VPU_DEC_SUCCESS_FIELD_PICTURE)
 	{
-		dec_disp_info_t dec_disp_info_tmp;
+		//dec_disp_info_t dec_disp_info_tmp;
 		int inTS = pInput->nTimeStamp;
 		
 		dec_disp_info_tmp.m_iFrameDuration = 1;
@@ -1395,7 +1395,8 @@ static int DECODER_DEC( tDEC_FRAME_INPUT *pInput, tDEC_FRAME_OUTPUT *pOutput, tD
 		int frameType = get_frame_type_for_frame_skipping( dec_private->pVideoDecodInstance.gsVDecInit.m_iBitstreamFormat, 
 														dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iPicType, 
 														dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iPictureStructure );
-
+		if (frameType == 0)
+		{	DebugPrint("Unknow Frame!");}
 		if( dec_private->pVideoDecodInstance.gsVDecInput.m_iFrameSearchEnable )
 		{
 			dec_private->frameSearchOrSkip_flag = 2;//I-frame Search Mode disable and B-frame Skip Mode enable

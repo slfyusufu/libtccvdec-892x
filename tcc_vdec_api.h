@@ -25,6 +25,8 @@
 #include <sys/ioctl.h>
 
 typedef unsigned int uint32_t;
+#define CONFIG_ARCH_TCC892X
+#define CONFIG_TCC_INVITE
 
 #ifdef	__cplusplus
 extern "C"{
@@ -37,7 +39,7 @@ extern int tcc_vdec_close(void);
 extern int tcc_vdec_process_annexb_header( unsigned char* data, int datalen);
 extern int tcc_vdec_process( unsigned char* data, int size);
 extern void tcc_vdec_SetViewFlag(int isValid);
-extern int tcc_vdec_init(int x, int y, int w, int h);
+extern int tcc_vdec_init(unsigned int width, unsigned int height);
 
 #ifdef	__cplusplus
 }
