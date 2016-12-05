@@ -29,7 +29,7 @@ OBJECTS  += $(CPP_OBJECTS)
 DEPENDS  += $(CPP_OBJECTS:.o=.d)
 
 
-###//////////////for 8971
+###//////////////for 892x
 ifeq ($(PLATFORM), tcc892x)
 
 CFLAGS += -mcpu=cortex-a5 -DHAVE_ANDROID_OS

@@ -42,7 +42,7 @@ typedef struct _DecodeDate {
 	unsigned int			default_ovp;	//set overlay layer
 	unsigned int			LCD_width;		//LCD size - width
 	unsigned int			LCD_height;		//LCD size - height
-	overlay_video_buffer_t	lastinfo;		//backup last_overlay_info
+	overlay_video_buffer_t	lastinfo;		//backup overlay_info
 	overlay_video_buffer_t	cur_info;		//current overlay_info
 	
 	pthread_mutex_t 		mutex_lock;
@@ -272,7 +272,6 @@ int tcc_vdec_process( unsigned char* data, int size)
 	screen_width  = decode_data.LCD_width;
 	screen_height = decode_data.LCD_height;
 	
-	
 	if(decode_data.IsDecoderOpen == 0){
 		ErrorPrint( "Decoder is not opened!!\n" );
 		pthread_mutex_unlock(&(decode_data.mutex_lock));
@@ -377,7 +376,7 @@ int tcc_vdec_process( unsigned char* data, int size)
 	//ioctl( decode_data.OverlayDrv, OVERLAY_SET_CROP_INFO, &crop_info);
 #endif
 
-#if defined(CONFIG_SCALER)			
+#if 0//defined(CONFIG_SCALER)			
 	///for scaler
 	float ratio0 = (float)decode_data.cur_info.cfg.width/(float)decode_data.cur_info.cfg.height;
 	float ratio1 = (float)decode_data.cur_info.cfg.height/(float)decode_data.cur_info.cfg.width;

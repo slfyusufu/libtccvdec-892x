@@ -4,7 +4,7 @@
  * @brief		Decode one video frame using TCC VPU, now, we just set it to H264 decode. 
  * 				This interface contain : Init VPU, Decode frame and Close VPU.
  *
- * @author      Yusuf.Sha, Telechips Shenzhen Rep.
+ * @author      Telechips Shenzhen Rep.
  * @date        2016/11/08
  */
 //********************************************************************************************
@@ -40,7 +40,6 @@ typedef enum pic_type {
 } tPIC_TYPE;
 #endif
 
-
 /***********************************************************/
 //DECODER PARAMETERS
 typedef enum CONTAINER_TYPE {
@@ -75,7 +74,6 @@ typedef struct dec_frame_input {
 	int				nTimeStamp;			/* TimeStamp of input bitstream, by ms */
 } tDEC_FRAME_INPUT;
 
-
 typedef struct dec_frame_output {
 	tFRAME_BUF_FORMAT	frameFormat;
 	unsigned int		bufPhyAddr[3];		/* (Y,U,V or Y, UV). Base address of output frame (physical address) */
@@ -96,7 +94,8 @@ typedef struct dec_result {
 	int 	no_frame_output;	/* can't display because decoder fail or more frame need. */
 } tDEC_RESULT;
 
-
+/***********************************************************/
+//INSTANCE Stuct
 #define TS_TIMESTAMP_CORRECTION
 #define RESTORE_DECODE_ERR
 
@@ -189,7 +188,7 @@ typedef struct _VIDEO_DECOD_INSTANCE_ {
 #endif
 	int  isVPUClosed;
 	unsigned int video_dec_idx;
-//	cdmx_info_t cdmx_info;	// cdmx_info_t : Linuxには無さそう。使われていないようなので無視
+//	cdmx_info_t cdmx_info;	
 	dec_disp_info_ctrl_t dec_disp_info_ctrl;
 	dec_disp_info_t dec_disp_info[32];
 	dec_disp_info_input_t dec_disp_info_input;
@@ -235,26 +234,25 @@ typedef struct dec_private_data {
 	unsigned int Display_index[VPU_BUFF_COUNT];
 	unsigned int max_fifo_cnt;
 //error process
-	signed char 		seq_header_init_error_count;
-	unsigned char 		ConsecutiveVdecFailCnt;
+	signed int 		seq_header_init_error_count;
+	unsigned int 		ConsecutiveVdecFailCnt;
 	signed int			ConsecutiveBufferFullCnt;
 
 #ifdef RESTORE_DECODE_ERR
 	unsigned char* 		seqHeader_backup;
 	unsigned int 		seqHeader_len;
-	unsigned char 		cntDecError;
+	unsigned int 		cntDecError;
 #endif
 
 #ifdef CHECK_SEQHEADER_WITH_SYNCFRAME
 	unsigned char*		sequence_header_only;
-	unsigned char 		sequence_header_size;
+	long 		sequence_header_size;
 	unsigned char 		need_sequence_header_attachment;
 #endif
 }tDEC_PRIVATE;
 
-
-int tcc_vpudec_init( int width, int height );
+int  tcc_vpudec_init( int width, int height );
+int  tcc_vpudec_decode(unsigned int *pInputStream, unsigned int *pOutstream);
 void tcc_vpudec_close(void);
-int tcc_vpudec_decode(unsigned int *pInputStream, unsigned int *pOutstream);
 
-#endif	// __H264_DECODER_H__
+#endif	// __TCC_VPUDEC_INTF_H__

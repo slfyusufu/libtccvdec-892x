@@ -4,7 +4,7 @@
  * @brief		Decode one video frame using TCC VPU, now, we just set it to H264 decode. 
  * 				This interface contain : Init VPU, Decode frame and Close VPU.
  *
- * @author      Yusuf.Sha, Telechips Shenzhen Rep.
+ * @author      Telechips Shenzhen Rep.
  * @date        2016/11/08
  */
 //********************************************************************************************
@@ -392,7 +392,7 @@ static void VideoDecErrorProcess(int ret)
 {
     if(dec_private->cntDecError > MAX_CONSECUTIVE_VPU_FAIL_TO_RESTORE_COUNT)
     {
-		DebugPrint("Consecutive decode-cmd failure is occurred");
+		ErrorPrint("Consecutive decode-cmd failure is occurred");
     }
 
 #ifdef RESTORE_DECODE_ERR
@@ -410,13 +410,14 @@ static void VideoDecErrorProcess(int ret)
 		dec_private->isSequenceHeaderDone = 0;
 		dec_private->cntDecError = 1;
 		dec_private->in_index = dec_private->out_index = dec_private->frm_clear = 0;
-		DebugPrint("try to restore decode error");
+		ErrorPrint("try to restore decode error");
 	}
 #endif
 }
 
 #ifdef CHECK_SEQHEADER_WITH_SYNCFRAME
-static int extract_h264_seqheader(
+static int 
+extract_h264_seqheader(
 		const unsigned char	*pbyStreamData, 
 		long				lStreamDataSize,
 		unsigned char		**ppbySeqHeaderData,
@@ -616,11 +617,12 @@ static int extract_h264_seqheader(
 #endif
 
 
-static int extract_mpeg4_seqheader(
+static int 
+extract_mpeg4_seqheader(
 	 const unsigned char	*pbyData, 
-	 long				lDataSize,
-	 unsigned char		**ppbySeqHead,
-	 long				*plHeadLength
+	 long					lDataSize,
+	 unsigned char			**ppbySeqHead,
+	 long					*plHeadLength
 	 )
 {
 	unsigned long syncword = 0xFFFFFFFF;
@@ -690,7 +692,11 @@ static int extract_mpeg4_seqheader(
 }
 
 char*
-print_pic_type( int iVideoType, int iPicType, int iPictureStructure )
+print_pic_type(
+				int iVideoType, 
+				int iPicType, 
+				int iPictureStructure
+				)
 {
 	switch ( iVideoType )
 	{
@@ -777,7 +783,8 @@ print_pic_type( int iVideoType, int iPicType, int iPictureStructure )
 	}
 }
 
-static int DECODER_INIT_NoReordering(tDEC_INIT_PARAMS *pInit)
+static int
+DECODER_INIT_NoReordering(tDEC_INIT_PARAMS *pInit)
 {
 	int ret = 0;
 	
@@ -785,8 +792,8 @@ static int DECODER_INIT_NoReordering(tDEC_INIT_PARAMS *pInit)
 	
 	dec_private = (tDEC_PRIVATE*)calloc( 1, sizeof(tDEC_PRIVATE) );
 	if( dec_private == NULL ){
-		DebugPrint( "calloc fail\n" );
-		return 1;
+		ErrorPrint( "%s calloc fail!\n", __func__);
+		return -1;
 	}
 	
 	memset(dec_private, 0x00, sizeof(tDEC_PRIVATE));
@@ -827,7 +834,6 @@ static int DECODER_INIT_NoReordering(tDEC_INIT_PARAMS *pInit)
 		default: return -1;
 	}
 	
-	// Memo : 2014.10.29 N.Tanaka 抜けを追加>>>>>>>>>>>>>>>>>>>>
 	dec_private->frameSearchOrSkip_flag 			= 0;
 	dec_private->pVideoDecodInstance.gsVDecInit.m_iBitstreamFormat		= dec_private->pVideoDecodInstance.video_coding_type;
 	dec_private->pVideoDecodInstance.gsVDecInit.m_iPicWidth 			= pInit->picWidth;
@@ -836,11 +842,7 @@ static int DECODER_INIT_NoReordering(tDEC_INIT_PARAMS *pInit)
 	dec_private->pVideoDecodInstance.gsVDecInit.m_bFilePlayEnable		= 1;
 	dec_private->pVideoDecodInstance.container_type 					= pInit->container_type;
 	// <<<<<<<<<<<<<<<<<<<<
-	
-	// 基本的にHWDecodeのみになるはずなので、SWかの判断をせずにHWの時の処理を移植
 	dec_private->pVideoDecodInstance.gsVDecInit.m_bCbCrInterleaveMode	= 1;
-	
-	// Memo : 2014.10.29 N.Tanaka 抜けを追加>>>>>>>>>>>>>>>>>>>>
 	dec_private->pVideoDecodInstance.gspfVDec = vdec_vpu;
 	// <<<<<<<<<<<<<<<<<<<<
 	
@@ -866,12 +868,9 @@ static int DECODER_INIT_NoReordering(tDEC_INIT_PARAMS *pInit)
 	dec_private->pVideoDecodInstance.gsVDecUserInfo.frame_rate = 30;
 	dec_private->pVideoDecodInstance.gsVDecUserInfo.m_bJpegOnly = 0;
 	
-	// Linuxになって、この設定がなくなっている。実際にはre-ordering無効設定が必要なので後で確認
 //	dec_private->pVideoDecodInstance.gsVDecInit.m_bWFDPlayEnable = 1;
 
 /*
-	// [vdec_k.cを見た感じ、今回の設定の仕方はこんな感じかな？]
-	// extFunction は AndroidOSのifdefの時っぽいなぁ・・・
 	if( (pInst->extFunction & EXT_FUNC_NO_BUFFER_DELAY) != 0x0 )
 	{
 		DebugPrint("[VDEC_K] : No BufferDelay Mode....");
@@ -879,7 +878,6 @@ static int DECODER_INIT_NoReordering(tDEC_INIT_PARAMS *pInit)
 	}
 */
 	
-	// 一応これでビルドは通ったけどいいのかな？
 	dec_private->pVideoDecodInstance.gsVDecUserInfo.extFunction = EXT_FUNC_NO_BUFFER_DELAY;
 	
 	if( (ret = dec_private->pVideoDecodInstance.gspfVDec( VDEC_INIT, NULL, &dec_private->pVideoDecodInstance.gsVDecInit, &dec_private->pVideoDecodInstance.gsVDecUserInfo, dec_private->pVideoDecodInstance.pVdec_Instance )) < 0 )	
@@ -888,16 +886,16 @@ static int DECODER_INIT_NoReordering(tDEC_INIT_PARAMS *pInit)
 
 		if(ret != -VPU_ENV_INIT_ERROR) //to close vpu!!
 			dec_private->pVideoDecodInstance.isVPUClosed = 0;			
-		return ret;
+		return -1;
 	}
 	dec_private->pVideoDecodInstance.isVPUClosed = 0;
 	dec_private->pVideoDecodInstance.restred_count = 0;
 	
 	return 0;
-	
 }
 
-static void DECODER_CLOSE(void)
+static void
+DECODER_CLOSE(void)
 {
 	int ret;
 	
@@ -929,7 +927,12 @@ static void DECODER_CLOSE(void)
 	}
 }
 
-static int DECODER_DEC( tDEC_FRAME_INPUT *pInput, tDEC_FRAME_OUTPUT *pOutput, tDEC_RESULT *pResult )
+static int
+DECODER_DEC(
+			tDEC_FRAME_INPUT 	*pInput,
+			tDEC_FRAME_OUTPUT 	*pOutput,
+			tDEC_RESULT 		*pResult
+			)
 {
 	int ret = 0;
 	int nLen = 0;
@@ -1330,29 +1333,25 @@ static int DECODER_DEC( tDEC_FRAME_INPUT *pInput, tDEC_FRAME_OUTPUT *pOutput, tD
 		}
 		//current decoded frame info
 		
-		// [Memo] Linuxに変わって dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iextTimeStamp
-		// が怒られるので、無視。
 		
-		/*
+		#if 0
 		DebugPrint( "[In - %s][N:%4d][LEN:%6d][RT:%8d] [DecoIdx:%2d][DecStat:%d][FieldSeq:%d][TR:%8d] ", 
 						print_pic_type(dec_private->pVideoDecodInstance.gsVDecInit.m_iBitstreamFormat, dec_disp_info_tmp.m_iFrameType, dec_disp_info_tmp.m_iPicStructure),
 						dec_private->pVideoDecodInstance.video_dec_idx, pInput->inputStreamSize, (int)(pInput->nTimeStamp),
 						dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iDecodedIdx, dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iDecodingStatus,
 						dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iM2vFieldSequence, dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iextTimeStamp);
-		*/
+		#endif
 	}
 	else
 	{
-		// [Memo] Linuxに変わって dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iextTimeStamp
-		// が怒られるので、無視。
 		
-		/*
+		#if 0
 		DebugPrint( "[Err In - %s][N:%4d][LEN:%6d][RT:%8d] [DecoIdx:%2d][DecStat:%d][FieldSeq:%d][TR:%8d] ", 
 						print_pic_type(dec_private->pVideoDecodInstance.>gsVDecInit.m_iBitstreamFormat, dec_disp_info_tmp.m_iFrameType, dec_disp_info_tmp.m_iPicStructure),
 						dec_private->pVideoDecodInstance.video_dec_idx, pInput->inputStreamSize, (int)(pInput->nTimeStamp),
 						dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iDecodedIdx, dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iDecodingStatus,
 						dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iM2vFieldSequence, dec_private->pVideoDecodInstance.gsVDecOutput.m_DecOutInfo.m_iextTimeStamp);
-		*/
+		#endif
 	}
 
 //In case that only one field picture is decoded...
@@ -1586,13 +1585,13 @@ static void save_decoded_frame(unsigned char* Y, unsigned char* U, unsigned char
 {
 
 	FILE *pFs = NULL;
-	char name[100];
+	char name[128];
 
-	sprintf(name, "/mnt/SD1p1/DecDump.raw");
+	sprintf(name, "/run/media/mmcblk0p10/DecDump.raw");
 	if(!pFs){
 		pFs = fopen(name, "ab+");
 		if (!pFs) {
-			DebugPrint("Cannot open '%s'",name);
+			ErrorPrint("Cannot open '%s'",name);
 			return;
 		}
 	}
